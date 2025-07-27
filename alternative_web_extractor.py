@@ -1,41 +1,46 @@
-import requests
-import json
-import time
-from typing import Dict, List, Optional
-from bs4 import BeautifulSoup
-from urllib.parse import urlparse, urljoin
-import re
-from datetime import datetime
-import random
-from googlesearch import search
-from duckduckgo_search import DDGS
-from newspaper import Article
-import nltk
+#!/usr/bin/env python3
+"""
+Enhanced Alternative Web Extractor with Anti-Detection Measures
+Improved version with rotating User-Agents, smart delays, and enhanced error handling
+"""
 
+import asyncio
+import aiohttp
+import requests
+from bs4 import BeautifulSoup
+from newspaper import Article
+import time
+import random
+import re
+from urllib.parse import urlparse, urljoin
+from typing import Dict, List, Optional, Any
+import json
+from datetime import datetime
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class AlternativeWebExtractor:
     def __init__(self):
-        """Initialize alternative web extractor with multiple search engines"""
-
-        # Download required NLTK data
-        try:
-            nltk.download("punkt", quiet=True)
-        except:
-            pass
+        """Initialize the enhanced web extractor with anti-detection measures"""
         
-        # Rotating User Agents to avoid detection
+        # Rotating User-Agents for anti-detection
         self.user_agents = [
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
             "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/121.0",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0",
             "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Safari/605.1.15",
-            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edge/120.0.0.0",
         ]
         
-        # Additional headers to appear more human-like
+        # Enhanced headers for more realistic requests
         self.base_headers = {
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-            "Accept-Language": "en-US,en;q=0.5",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9",
             "Accept-Encoding": "gzip, deflate, br",
             "DNT": "1",
             "Connection": "keep-alive",
@@ -43,207 +48,202 @@ class AlternativeWebExtractor:
             "Sec-Fetch-Dest": "document",
             "Sec-Fetch-Mode": "navigate",
             "Sec-Fetch-Site": "none",
-            "Cache-Control": "max-age=0"
+            "Sec-Fetch-User": "?1",
+            "Cache-Control": "max-age=0",
         }
         
-        # Rate limiting settings
-        self.min_delay = 2
-        self.max_delay = 5
+        # Anti-detection settings
         self.max_retries = 3
+        self.delay_range = (2, 6)  # Random delay between requests
+        self.retry_delay_range = (5, 15)  # Longer delay on retries
         
-        # Configure session to handle SSL issues
-        import urllib3
-        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
-    def search_google(self, query: str, num_results: int = 10) -> List[Dict]:
-        """
-        Search using Google (requires googlesearch-python)
-
-        Args:
-            query: Search query
-            num_results: Number of results to return
-
-        Returns:
-            List of search results
-        """
-        results = []
-        try:
-            print(f"🔍 Searching Google for: {query}")
-
-            # Use googlesearch-python
-            search_results = search(query, num_results=num_results, lang="en")
-
-            for url in search_results:
-                try:
-                    result = self._extract_content_from_url(url)
-                    if result:
-                        results.append(result)
-                        print(f"   ✅ Extracted: {result.get('title', 'Unknown')}")
-
-                    # Smart delay to avoid detection
-                    self._smart_delay()
-
-                except Exception as e:
-                    print(f"   ❌ Failed to extract {url}: {e}")
-                    continue
-
-        except Exception as e:
-            print(f"❌ Google search error: {e}")
-
-        return results
-
+        # Session for connection reuse
+        self.session = None
+        
     def _get_session(self) -> requests.Session:
-        """Create a new session with random user agent and headers"""
-        session = requests.Session()
-        
-        # Random user agent
-        user_agent = random.choice(self.user_agents)
-        
-        # Update headers
+        """Get or create a session with random headers"""
+        if not self.session:
+            self.session = requests.Session()
+            
+        # Update headers with random User-Agent
         headers = self.base_headers.copy()
-        headers["User-Agent"] = user_agent
+        headers["User-Agent"] = random.choice(self.user_agents)
+        self.session.headers.update(headers)
         
-        session.headers.update(headers)
-        
-        # Configure session
-        session.verify = False
-        session.timeout = 15
-        
-        return session
+        return self.session
     
     def _smart_delay(self):
-        """Add intelligent delays to avoid detection"""
-        # Random delay between requests
-        delay = random.uniform(self.min_delay, self.max_delay)
+        """Add smart delay to avoid detection"""
+        delay = random.uniform(*self.delay_range)
         time.sleep(delay)
-        
-        # Occasionally add longer delays
-        if random.random() < 0.1:  # 10% chance
-            extra_delay = random.uniform(3, 8)
-            time.sleep(extra_delay)
-
-    def search_duckduckgo(self, query: str, num_results: int = 10) -> List[Dict]:
+    
+    def search_google(self, query: str, num_results: int = 10) -> List[str]:
         """
-        Search using DuckDuckGo (requires duckduckgo-search)
-
-        Args:
-            query: Search query
-            num_results: Number of results to return
-
-        Returns:
-            List of search results
+        Search Google for URLs related to the query with anti-detection measures
         """
-        results = []
         try:
-            print(f"🔍 Searching DuckDuckGo for: {query}")
-
-            with DDGS() as ddgs:
-                search_results = ddgs.text(query, max_results=num_results)
-
-                for result in search_results:
-                    try:
-                        url = result.get("link", "")
-                        if url:
-                            extracted = self._extract_content_from_url(url)
-                            if extracted:
-                                # Add search result metadata
-                                extracted["search_snippet"] = result.get("body", "")
-                                extracted["search_rank"] = len(results) + 1
-                                results.append(extracted)
-                                print(
-                                    f"   ✅ Extracted: {extracted.get('title', 'Unknown')}"
-                                )
-
-                            # Smart delay to avoid detection
-                            self._smart_delay()
-
-                    except Exception as e:
-                        print(f"   ❌ Failed to extract: {e}")
-                        continue
-
+            from googlesearch import search
+            
+            print(f"🔍 Searching Google for: '{query}'")
+            
+            urls = []
+            for url in search(query, num_results=num_results, stop=num_results, pause=2.0):
+                urls.append(url)
+                self._smart_delay()  # Add delay between searches
+                
+            print(f"📋 Found {len(urls)} URLs from Google")
+            return urls
+            
         except Exception as e:
-            print(f"❌ DuckDuckGo search error: {e}")
+            print(f"❌ Google search failed: {e}")
+            return []
 
-        return results
-
-    def search_multiple_engines(self, query: str, num_results: int = 10) -> List[Dict]:
+    def search_duckduckgo(self, query: str, max_results: int = 10) -> List[str]:
         """
-        Search using multiple engines for comprehensive results
-
-        Args:
-            query: Search query
-            num_results: Number of results per engine
-
-        Returns:
-            Combined list of search results
+        Search DuckDuckGo for URLs with enhanced error handling
         """
-        all_results = []
+        try:
+            from duckduckgo_search import DDGS
+            
+            print(f"🦆 Searching DuckDuckGo for: '{query}'")
+            
+            with DDGS() as ddgs:
+                results = list(ddgs.text(query, max_results=max_results))
+                urls = [result['href'] for result in results if 'href' in result]
+                
+                self._smart_delay()  # Add delay after search
+                
+            print(f"📋 Found {len(urls)} URLs from DuckDuckGo")
+            return urls
+            
+        except Exception as e:
+            print(f"❌ DuckDuckGo search failed: {e}")
+            return []
 
-        # Try Google first
-        google_results = self.search_google(query, num_results // 2)
-        all_results.extend(google_results)
+    def get_search_urls(self, topic: str, max_urls: int = 15) -> List[str]:
+        """
+        Get search URLs from multiple search engines with better distribution
+        """
+        print(f"\n🔍 Searching for: {topic}")
+        all_urls = []
+        
+        # Try Google first (usually better results)
+        google_urls = self.search_google(topic, max_urls // 2)
+        all_urls.extend(google_urls)
+        
+        # Add delay between search engines
+        if google_urls:
+            time.sleep(random.uniform(3, 7))
+        
+        # Try DuckDuckGo as backup/supplement
+        remaining = max_urls - len(all_urls)
+        if remaining > 0:
+            duckduckgo_urls = self.search_duckduckgo(topic, remaining)
+            all_urls.extend(duckduckgo_urls)
+        
+        # Remove duplicates while preserving order
+        unique_urls = []
+        seen = set()
+        for url in all_urls:
+            if url not in seen:
+                unique_urls.append(url)
+                seen.add(url)
+        
+        print(f"✅ Total unique URLs found: {len(unique_urls)}")
+        return unique_urls[:max_urls]
 
-        # Try DuckDuckGo
-        ddg_results = self.search_duckduckgo(query, num_results // 2)
-        all_results.extend(ddg_results)
-
-        # Remove duplicates based on URL
-        unique_results = []
-        seen_urls = set()
-
-        for result in all_results:
-            url = result.get("url", "")
-            if url and url not in seen_urls:
-                seen_urls.add(url)
-                unique_results.append(result)
-
-        return unique_results[:num_results]
+    async def extract_content_async(self, url: str, session: aiohttp.ClientSession) -> Optional[Dict]:
+        """
+        Asynchronously extract content from a URL with enhanced anti-detection
+        """
+        try:
+            # Random delay
+            await asyncio.sleep(random.uniform(1, 3))
+            
+            # Enhanced headers for async requests
+            headers = self.base_headers.copy()
+            headers["User-Agent"] = random.choice(self.user_agents)
+            
+            async with session.get(url, headers=headers, timeout=aiohttp.ClientTimeout(total=15)) as response:
+                if response.status == 403:
+                    print(f"   ⚠️  Async request blocked: 403 Forbidden for {url}")
+                    return None
+                    
+                response.raise_for_status()
+                html = await response.text()
+                
+                # Parse with BeautifulSoup
+                soup = BeautifulSoup(html, 'html.parser')
+                
+                # Remove unwanted elements
+                for element in soup(['script', 'style', 'nav', 'header', 'footer']):
+                    element.decompose()
+                
+                # Extract content
+                title = soup.find('title')
+                title_text = title.get_text().strip() if title else "No title"
+                
+                content = self._extract_main_content(soup)
+                
+                if content and len(content) > 100:
+                    return {
+                        "title": title_text,
+                        "url": url,
+                        "content": content[:8000],
+                        "content_length": len(content),
+                        "source": urlparse(url).netloc,
+                        "extraction_method": "async_beautifulsoup"
+                    }
+                    
+        except Exception as e:
+            print(f"   ❌ Async extraction failed for {url}: {e}")
+            return None
 
     def _extract_content_from_url(self, url: str) -> Optional[Dict]:
         """
-        Extract content from a specific URL using multiple methods with anti-detection
-
+        Enhanced content extraction with anti-detection measures and retry logic
+        
         Args:
             url: URL to extract content from
-
+            
         Returns:
             Dictionary containing extracted content
         """
         for attempt in range(self.max_retries):
-        try:
+            try:
                 session = self._get_session()
                 
                 # Add random delay before request
                 self._smart_delay()
                 
-            # Method 1: Try newspaper3k first (best for articles)
-            try:
-                article = Article(url)
-                article.config.verify_ssl = False
+                # Method 1: Try newspaper3k first (best for articles)
+                try:
+                    article = Article(url)
+                    article.config.verify_ssl = False
                     
                     # Set custom headers for newspaper3k
                     article.config.browser_user_agent = session.headers["User-Agent"]
                     
-                article.download()
-                article.parse()
-                article.nlp()
+                    article.download()
+                    article.parse()
+                    article.nlp()
 
-                if article.text and len(article.text) > 100:
-                    return {
-                        "title": article.title or "No title",
-                        "url": url,
-                        "content": article.text,
-                        "content_length": len(article.text),
-                        "source": urlparse(url).netloc,
-                        "summary": article.summary,
-                        "keywords": article.keywords,
-                        "publish_date": (
-                            str(article.publish_date) if article.publish_date else None
-                        ),
-                        "extraction_method": "newspaper3k",
+                    if article.text and len(article.text) > 100:
+                        return {
+                            "title": article.title or "No title",
+                            "url": url,
+                            "content": article.text,
+                            "content_length": len(article.text),
+                            "source": urlparse(url).netloc,
+                            "summary": article.summary,
+                            "keywords": article.keywords,
+                            "publish_date": (
+                                str(article.publish_date) if article.publish_date else None
+                            ),
+                            "extraction_method": "newspaper3k",
                             "attempt": attempt + 1
-                    }
-            except Exception as e:
+                        }
+                except Exception as e:
                     if "403" in str(e) or "Forbidden" in str(e):
                         print(f"   ⚠️  Newspaper3k blocked (attempt {attempt + 1}): {e}")
                         if attempt < self.max_retries - 1:
@@ -253,7 +253,7 @@ class AlternativeWebExtractor:
                         print(f"   ⚠️  Newspaper3k failed: {e}")
 
                 # Method 2: Try BeautifulSoup with enhanced headers
-            try:
+                try:
                     response = session.get(url, timeout=15)
                     
                     # Check for blocking
@@ -265,33 +265,33 @@ class AlternativeWebExtractor:
                         else:
                             break
                     
-                response.raise_for_status()
+                    response.raise_for_status()
 
-                soup = BeautifulSoup(response.content, "html.parser")
+                    soup = BeautifulSoup(response.content, "html.parser")
 
-                # Remove script and style elements
+                    # Remove script and style elements
                     for script in soup(["script", "style", "nav", "header", "footer"]):
-                    script.decompose()
+                        script.decompose()
 
-                # Get title
-                title = soup.find("title")
-                title_text = title.get_text().strip() if title else "No title"
+                    # Get title
+                    title = soup.find("title")
+                    title_text = title.get_text().strip() if title else "No title"
 
                     # Enhanced content extraction
                     content = self._extract_main_content(soup)
 
-                if content and len(content) > 100:
-                    return {
-                        "title": title_text,
-                        "url": url,
+                    if content and len(content) > 100:
+                        return {
+                            "title": title_text,
+                            "url": url,
                             "content": content[:8000],  # Increased limit
-                        "content_length": len(content),
-                        "source": urlparse(url).netloc,
-                        "extraction_method": "beautifulsoup",
+                            "content_length": len(content),
+                            "source": urlparse(url).netloc,
+                            "extraction_method": "beautifulsoup",
                             "attempt": attempt + 1
-                    }
+                        }
 
-            except Exception as e:
+                except Exception as e:
                     if "403" in str(e) or "Forbidden" in str(e):
                         print(f"   ⚠️  BeautifulSoup blocked (attempt {attempt + 1}): {e}")
                         if attempt < self.max_retries - 1:
@@ -301,7 +301,7 @@ class AlternativeWebExtractor:
                         print(f"   ⚠️  BeautifulSoup failed: {e}")
 
                 # Method 3: Simple text extraction as last resort
-            try:
+                try:
                     response = session.get(url, timeout=15)
                     
                     if response.status_code == 403:
@@ -312,20 +312,20 @@ class AlternativeWebExtractor:
                         else:
                             break
                     
-                response.raise_for_status()
+                    response.raise_for_status()
 
-                # Simple text extraction
-                text = re.sub(r"<[^>]+>", "", response.text)
-                text = re.sub(r"\s+", " ", text).strip()
+                    # Simple text extraction
+                    text = re.sub(r"<[^>]+>", "", response.text)
+                    text = re.sub(r"\s+", " ", text).strip()
 
-                if text and len(text) > 100:
-                    return {
-                        "title": "Extracted Content",
-                        "url": url,
+                    if text and len(text) > 100:
+                        return {
+                            "title": "Extracted Content",
+                            "url": url,
                             "content": text[:5000],
-                        "content_length": len(text),
-                        "source": urlparse(url).netloc,
-                        "extraction_method": "simple_text",
+                            "content_length": len(text),
+                            "source": urlparse(url).netloc,
+                            "extraction_method": "simple_text",
                             "attempt": attempt + 1
                         }
 
@@ -348,7 +348,7 @@ class AlternativeWebExtractor:
                 if attempt < self.max_retries - 1:
                     time.sleep(random.uniform(2, 5))
 
-            return None
+        return None
 
     def _extract_main_content(self, soup: BeautifulSoup) -> str:
         """Enhanced content extraction with multiple strategies"""
@@ -397,150 +397,160 @@ class AlternativeWebExtractor:
 
     def get_topic_data(self, topic: str, max_sites: int = 10) -> Dict:
         """
-        Get comprehensive data for a topic using alternative search engines
-
-        Args:
-            topic: Research topic
-            max_sites: Maximum number of sites to extract from
-
-        Returns:
-            Dictionary containing topic data
+        Enhanced topic data extraction with anti-detection measures
         """
-        print(f"🔬 Researching topic: {topic}")
-
-        # Search for the topic
-        search_results = self.search_multiple_engines(topic, max_sites * 2)
-
-        # Process results
-        complete_data = {
-            "topic": topic,
-            "sites": [],
-            "total_content_length": 0,
-            "search_engines_used": ["Google", "DuckDuckGo"],
-            "extraction_methods": set(),
-            "timestamp": datetime.now().isoformat(),
-        }
-
-        successful_extractions = 0
-
-        for i, result in enumerate(search_results[:max_sites]):
-            if result:
-                complete_data["sites"].append(result)
-                complete_data["total_content_length"] += result.get("content_length", 0)
-                complete_data["extraction_methods"].add(
-                    result.get("extraction_method", "unknown")
-                )
-                successful_extractions += 1
-
-                print(
-                    f"📄 {i+1}/{min(len(search_results), max_sites)}: {result.get('title', 'Unknown')}"
-                )
-                print(f"   Method: {result.get('extraction_method', 'unknown')}")
-                print(f"   Content: {result.get('content_length', 0)} characters")
-
-        # Convert set to list for JSON serialization
-        complete_data["extraction_methods"] = list(complete_data["extraction_methods"])
-
-        print(f"\n✅ Research complete!")
-        print(f"   Sites processed: {successful_extractions}")
-        print(f"   Total content: {complete_data['total_content_length']:,} characters")
-        print(
-            f"   Extraction methods: {', '.join(complete_data['extraction_methods'])}"
-        )
-
-        return complete_data
-
-    def search_specific_domains(
-        self, query: str, domains: List[str], num_results: int = 5
-    ) -> List[Dict]:
-        """
-        Search within specific domains
-
-        Args:
-            query: Search query
-            domains: List of domains to search within
-            num_results: Number of results per domain
-
-        Returns:
-            List of search results
-        """
-        all_results = []
-
-        for domain in domains:
-            try:
-                domain_query = f"site:{domain} {query}"
-                results = self.search_google(domain_query, num_results)
-                all_results.extend(results)
-                print(f"✅ Found {len(results)} results from {domain}")
-
-            except Exception as e:
-                print(f"❌ Failed to search {domain}: {e}")
-
-        return all_results
-
-    def extract_from_urls(self, urls: List[str]) -> List[Dict]:
-        """
-        Extract content from a list of specific URLs
-
-        Args:
-            urls: List of URLs to extract from
-
-        Returns:
-            List of extracted content
-        """
-        results = []
-
+        print(f"\n🚀 Enhanced Web Extraction for: {topic}")
+        print("=" * 50)
+        
+        # Get URLs from search engines
+        urls = self.get_search_urls(topic, max_sites)
+        
+        if not urls:
+            return {
+                "topic": topic,
+                "sites": [],
+                "total_content_length": 0,
+                "extraction_summary": "No URLs found"
+            }
+        
+        extracted_sites = []
+        total_content_length = 0
+        
+        print(f"\n📊 Extracting content from {len(urls)} URLs...")
+        
         for i, url in enumerate(urls, 1):
-            print(f"📄 Extracting {i}/{len(urls)}: {url}")
-
+            print(f"\n[{i}/{len(urls)}] Processing: {url}")
+            
             try:
                 result = self._extract_content_from_url(url)
+                
                 if result:
-                    results.append(result)
-                    print(f"   ✅ Success: {result.get('title', 'Unknown')}")
+                    extracted_sites.append(result)
+                    total_content_length += result.get("content_length", 0)
+                    print(f"   ✅ Success: {result['content_length']} chars via {result['extraction_method']}")
                 else:
                     print(f"   ❌ Failed to extract content")
-
+                    
             except Exception as e:
-                print(f"   ❌ Error: {e}")
+                print(f"   ❌ Error processing {url}: {e}")
+            
+            # Add delay between sites to avoid detection
+            if i < len(urls):
+                time.sleep(random.uniform(2, 5))
+        
+        success_rate = len(extracted_sites) / len(urls) * 100 if urls else 0
+        
+        print(f"\n📈 Extraction Summary:")
+        print(f"   • URLs processed: {len(urls)}")
+        print(f"   • Successful extractions: {len(extracted_sites)}")
+        print(f"   • Success rate: {success_rate:.1f}%")
+        print(f"   • Total content: {total_content_length:,} characters")
+        
+        return {
+            "topic": topic,
+            "sites": extracted_sites,
+            "total_content_length": total_content_length,
+            "extraction_summary": f"Extracted {len(extracted_sites)}/{len(urls)} sites ({success_rate:.1f}% success)",
+            "urls_processed": len(urls),
+            "successful_extractions": len(extracted_sites),
+            "timestamp": datetime.now().isoformat()
+        }
 
-            # Add delay
-            time.sleep(random.uniform(1, 2))
+    async def get_topic_data_async(self, topic: str, max_sites: int = 10) -> Dict:
+        """
+        Async version of topic data extraction for better performance
+        """
+        print(f"\n🚀 Async Enhanced Web Extraction for: {topic}")
+        print("=" * 50)
+        
+        # Get URLs from search engines (synchronous)
+        urls = self.get_search_urls(topic, max_sites)
+        
+        if not urls:
+            return {
+                "topic": topic,
+                "sites": [],
+                "total_content_length": 0,
+                "extraction_summary": "No URLs found"
+            }
+        
+        extracted_sites = []
+        
+        print(f"\n📊 Async extracting content from {len(urls)} URLs...")
+        
+        # Create async session with enhanced settings
+        connector = aiohttp.TCPConnector(limit=5, limit_per_host=2)
+        timeout = aiohttp.ClientTimeout(total=30)
+        
+        async with aiohttp.ClientSession(connector=connector, timeout=timeout) as session:
+            # Create tasks for async extraction
+            tasks = [
+                self.extract_content_async(url, session)
+                for url in urls
+            ]
+            
+            # Execute with some delay between requests
+            results = []
+            for i, task in enumerate(tasks):
+                try:
+                    result = await task
+                    if result:
+                        extracted_sites.append(result)
+                        print(f"   ✅ [{i+1}/{len(urls)}] Success: {result['content_length']} chars")
+                    else:
+                        print(f"   ❌ [{i+1}/{len(urls)}] Failed")
+                except Exception as e:
+                    print(f"   ❌ [{i+1}/{len(urls)}] Error: {e}")
+                
+                # Add delay between requests
+                if i < len(tasks) - 1:
+                    await asyncio.sleep(random.uniform(1, 3))
+        
+        total_content_length = sum(site.get("content_length", 0) for site in extracted_sites)
+        success_rate = len(extracted_sites) / len(urls) * 100 if urls else 0
+        
+        print(f"\n📈 Async Extraction Summary:")
+        print(f"   • URLs processed: {len(urls)}")
+        print(f"   • Successful extractions: {len(extracted_sites)}")
+        print(f"   • Success rate: {success_rate:.1f}%")
+        print(f"   • Total content: {total_content_length:,} characters")
+        
+        return {
+            "topic": topic,
+            "sites": extracted_sites,
+            "total_content_length": total_content_length,
+            "extraction_summary": f"Async extracted {len(extracted_sites)}/{len(urls)} sites ({success_rate:.1f}% success)",
+            "urls_processed": len(urls),
+            "successful_extractions": len(extracted_sites),
+            "timestamp": datetime.now().isoformat()
+        }
 
-        return results
-
-
-def main():
-    """Example usage of Alternative Web Extractor"""
+# Test function
+def test_enhanced_extraction():
+    """Test the enhanced extraction capabilities"""
     extractor = AlternativeWebExtractor()
-
-    # Example 1: Search for a topic
-    print("🔍 Example 1: Topic Search")
-    topic = "Python machine learning tutorials"
-    data = extractor.get_topic_data(topic, max_sites=5)
-
-    print(f"\n📊 Results for '{topic}':")
-    print(f"Total sites: {len(data['sites'])}")
-    print(f"Total content: {data['total_content_length']:,} characters")
-    print(f"Extraction methods: {', '.join(data['extraction_methods'])}")
-
-    # Example 2: Search specific domains
-    print(f"\n🔍 Example 2: Domain-Specific Search")
-    domains = ["github.com", "stackoverflow.com"]
-    domain_results = extractor.search_specific_domains(
-        "Python web scraping", domains, 3
-    )
-
-    print(f"Found {len(domain_results)} results from specific domains")
-
-    # Example 3: Extract from specific URLs
-    print(f"\n🔍 Example 3: URL Extraction")
-    test_urls = ["https://www.python.org/", "https://docs.python.org/3/tutorial/"]
-    url_results = extractor.extract_from_urls(test_urls)
-
-    print(f"Extracted from {len(url_results)} URLs")
-
+    
+    test_topics = [
+        "artificial intelligence latest developments",
+        "climate change solutions 2024"
+    ]
+    
+    for topic in test_topics:
+        print(f"\n{'='*60}")
+        print(f"Testing Enhanced Extraction: {topic}")
+        print(f"{'='*60}")
+        
+        result = extractor.get_topic_data(topic, max_sites=5)
+        
+        print(f"\nResults for '{topic}':")
+        print(f"Sites extracted: {len(result['sites'])}")
+        print(f"Total content: {result['total_content_length']} characters")
+        
+        for i, site in enumerate(result['sites'][:2], 1):
+            print(f"\nSite {i}: {site['title']}")
+            print(f"URL: {site['url']}")
+            print(f"Length: {site['content_length']} chars")
+            print(f"Method: {site['extraction_method']}")
 
 if __name__ == "__main__":
-    main()
- 
+    test_enhanced_extraction() 
