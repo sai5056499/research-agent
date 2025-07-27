@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: research-agent-web
+    env: python
+    plan: starter
+    buildCommand: pip install -r web_interface/requirements.txt
+    startCommand: cd web_interface && gunicorn app:app
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.9.16
+      - key: PYTHONPATH
+        value: .
+      - key: SECRET_KEY
+        generateValue: true
+    healthCheckPath: /api/health
+    autoDeploy: true 
