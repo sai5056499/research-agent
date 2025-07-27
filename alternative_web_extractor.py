@@ -60,6 +60,45 @@ class AlternativeWebExtractor:
         # Session for connection reuse
         self.session = None
         
+        # Fallback URLs for common topics when search engines fail
+        self.fallback_urls = {
+            "artificial intelligence": [
+                "https://en.wikipedia.org/wiki/Artificial_intelligence",
+                "https://www.ibm.com/topics/artificial-intelligence",
+                "https://www.mit.edu/~echeng/artificial-intelligence/"
+            ],
+            "machine learning": [
+                "https://en.wikipedia.org/wiki/Machine_learning",
+                "https://www.coursera.org/articles/what-is-machine-learning",
+                "https://www.ibm.com/topics/machine-learning"
+            ],
+            "weight loss": [
+                "https://www.mayoclinic.org/healthy-lifestyle/weight-loss/basics/weightloss-basics/hlv-20049483",
+                "https://www.healthline.com/nutrition/how-to-lose-weight-as-fast-as-possible",
+                "https://www.webmd.com/diet/obesity/features/10-ways-to-lose-weight-without-dieting"
+            ],
+            "meditation": [
+                "https://www.mayoclinic.org/tests-procedures/meditation/in-depth/meditation/art-20045858",
+                "https://www.mindful.org/how-to-meditate/",
+                "https://en.wikipedia.org/wiki/Meditation"
+            ],
+            "yoga": [
+                "https://www.mayoclinic.org/healthy-lifestyle/stress-management/in-depth/yoga/art-20044733",
+                "https://www.yogajournal.com/poses/",
+                "https://en.wikipedia.org/wiki/Yoga"
+            ],
+            "climate change": [
+                "https://climate.nasa.gov/what-is-climate-change/",
+                "https://www.un.org/en/climatechange/what-is-climate-change",
+                "https://en.wikipedia.org/wiki/Climate_change"
+            ],
+            "nutrition": [
+                "https://www.nutrition.gov/topics/basic-nutrition",
+                "https://www.mayoclinic.org/healthy-lifestyle/nutrition-and-healthy-eating/basics/nutrition-basics/hlv-20049477",
+                "https://en.wikipedia.org/wiki/Nutrition"
+            ]
+        }
+        
     def _get_session(self) -> requests.Session:
         """Get or create a session with random headers"""
         if not self.session:
@@ -77,6 +116,29 @@ class AlternativeWebExtractor:
         delay = random.uniform(*self.delay_range)
         time.sleep(delay)
     
+    def _get_fallback_urls(self, query: str) -> List[str]:
+        """Get fallback URLs when search engines fail"""
+        query_lower = query.lower()
+        
+        # Direct match
+        if query_lower in self.fallback_urls:
+            print(f"📋 Using fallback URLs for: {query}")
+            return self.fallback_urls[query_lower]
+        
+        # Partial match
+        for topic, urls in self.fallback_urls.items():
+            if any(word in query_lower for word in topic.split()):
+                print(f"📋 Using fallback URLs for related topic: {topic}")
+                return urls[:3]  # Return first 3 URLs
+        
+        # Generic fallback for any topic
+        print(f"📋 Using generic fallback URLs for: {query}")
+        return [
+            f"https://en.wikipedia.org/wiki/{query.replace(' ', '_')}",
+            f"https://www.google.com/search?q={query.replace(' ', '+')}",
+            f"https://www.britannica.com/search?query={query.replace(' ', '+')}"
+        ]
+    
     def search_google(self, query: str, num_results: int = 10) -> List[str]:
         """
         Search Google for URLs related to the query with anti-detection measures
@@ -87,16 +149,20 @@ class AlternativeWebExtractor:
             print(f"🔍 Searching Google for: '{query}'")
             
             urls = []
-            for url in search(query, num_results=num_results, stop=num_results, pause=2.0):
+            # Fix: Remove the 'stop' parameter that's causing the error
+            for url in search(query, num_results=num_results, pause=2.0):
                 urls.append(url)
                 self._smart_delay()  # Add delay between searches
+                if len(urls) >= num_results:  # Manual limit
+                    break
                 
             print(f"📋 Found {len(urls)} URLs from Google")
             return urls
             
         except Exception as e:
             print(f"❌ Google search failed: {e}")
-            return []
+            # Return fallback URLs for common topics
+            return self._get_fallback_urls(query)
 
     def search_duckduckgo(self, query: str, max_results: int = 10) -> List[str]:
         """
@@ -118,7 +184,8 @@ class AlternativeWebExtractor:
             
         except Exception as e:
             print(f"❌ DuckDuckGo search failed: {e}")
-            return []
+            # Return fallback URLs for common topics
+            return self._get_fallback_urls(query)
 
     def get_search_urls(self, topic: str, max_urls: int = 15) -> List[str]:
         """
