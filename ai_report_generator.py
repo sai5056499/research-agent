@@ -603,15 +603,21 @@ For questions or corrections: contact@yourstudio.org"""
         """Step 8: EXPORT - Generate final report"""
         print(f"\n📤 EXPORT")
         
-        topic = report_data["report"]["metadata"]["topic"]
+        topic = report_data["metadata"]["topic"]
         date_str = datetime.now().strftime("%Y-%m-%d")
+        
+        # Generate markdown content if not already present
+        if "markdown_content" not in report_data:
+            markdown_content = self._generate_markdown(report_data)
+        else:
+            markdown_content = report_data["markdown_content"]
         
         if format == "markdown":
             filename = f"{topic.title()}-Guide-{date_str}.md"
-            content = report_data["markdown"]
+            content = markdown_content
         else:
             filename = f"{topic.title()}-Guide-{date_str}.txt"
-            content = report_data["markdown"]
+            content = markdown_content
         
         # Save to file
         output_dir = Path("ai_report_outputs")
@@ -740,7 +746,10 @@ For questions or corrections: contact@yourstudio.org"""
         normalized = self.style_normalization(report_content)
         
         # Step 7: QA & Fact Check
-        fact_checked = self.qa_fact_check(normalized["report"])
+        fact_checked = self.qa_fact_check(report_content)
+        
+        # Add markdown content to fact_checked data
+        fact_checked["markdown_content"] = normalized["markdown"]
         
         # Step 8: Export
         filepath = self.export_report(fact_checked)
