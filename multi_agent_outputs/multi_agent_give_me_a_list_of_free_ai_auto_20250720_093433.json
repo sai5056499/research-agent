@@ -1,0 +1,109 @@
+{
+  "topic": "give me a list of free ai autonomous agent to automate",
+  "timestamp": "20250720_093433",
+  "extraction_summary": {
+    "sites": 9,
+    "total_content": 100974
+  },
+  "analysis_summary": {
+    "content_metrics": {
+      "total_sites": 9,
+      "total_content": 100974,
+      "average_content": 11219.333333333334,
+      "max_content": 25675,
+      "min_content": 442,
+      "content_distribution": {
+        "short": 2,
+        "medium": 1,
+        "long": 6
+      }
+    },
+    "topic_coverage": {
+      "average_coverage": 19.88888888888889,
+      "high_coverage_sites": 9,
+      "coverage_distribution": {
+        "excellent": 9,
+        "good": 0,
+        "fair": 0,
+        "poor": 0
+      }
+    },
+    "source_diversity": {
+      "unique_domains": 9,
+      "domain_distribution": {
+        "github.com": 1,
+        "botpress.com": 1,
+        "www.aixploria.com": 1,
+        "www.marketermilk.com": 1,
+        "www.digitalocean.com": 1,
+        "www.multimodal.dev": 1,
+        "relevanceai.com": 1,
+        "medium.com": 1,
+        "www.reddit.com": 1
+      },
+      "extraction_methods": {
+        "newspaper3k": 9
+      },
+      "top_domains": {
+        "github.com": 1,
+        "botpress.com": 1,
+        "www.aixploria.com": 1,
+        "www.marketermilk.com": 1,
+        "www.digitalocean.com": 1
+      }
+    },
+    "content_quality": {
+      "average_quality": 51.111111111111114,
+      "high_quality_sites": 6,
+      "quality_distribution": {
+        "excellent": 0,
+        "good": 6,
+        "fair": 3,
+        "poor": 0
+      }
+    },
+    "trend_analysis": {
+      "trend_keywords": [
+        "another",
+        "that",
+        "designed",
+        "agent",
+        "agents",
+        "autonomous",
+        "window.",
+        "data",
+        "what",
+        "your"
+      ],
+      "content_patterns": {
+        "average_title_length": 53.666666666666664,
+        "content_types": {
+          "articles": 0,
+          "guides": 0,
+          "tutorials": 0
+        }
+      }
+    }
+  },
+  "insights_summary": {
+    "key_insights": [
+      "Successfully analyzed 9 sources",
+      "Total content volume: 100,974 characters",
+      "Content depth is substantial, indicating comprehensive coverage",
+      "9 sites have excellent topic coverage",
+      "Content sourced from 9 unique domains",
+      "Good source diversity indicates comprehensive research"
+    ],
+    "recommendations": [],
+    "trends": [
+      "Emerging keywords: another, that, designed, agent, agents"
+    ],
+    "gaps": [],
+    "opportunities": [
+      "Consider longitudinal analysis for trend identification",
+      "Explore comparative analysis with related topics",
+      "Investigate emerging subtopics within the research area",
+      "Analyze content sentiment and public opinion trends"
+    ]
+  }
+}

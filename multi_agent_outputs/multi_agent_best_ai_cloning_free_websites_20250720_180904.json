@@ -1,0 +1,111 @@
+{
+  "topic": "best ai cloning free websites",
+  "timestamp": "20250720_180904",
+  "extraction_summary": {
+    "sites": 9,
+    "total_content": 28260
+  },
+  "analysis_summary": {
+    "content_metrics": {
+      "total_sites": 9,
+      "total_content": 28260,
+      "average_content": 3140.0,
+      "max_content": 13764,
+      "min_content": 119,
+      "content_distribution": {
+        "short": 6,
+        "medium": 1,
+        "long": 2
+      }
+    },
+    "topic_coverage": {
+      "average_coverage": 8.777777777777779,
+      "high_coverage_sites": 9,
+      "coverage_distribution": {
+        "excellent": 9,
+        "good": 0,
+        "fair": 0,
+        "poor": 0
+      }
+    },
+    "source_diversity": {
+      "unique_domains": 9,
+      "domain_distribution": {
+        "www.sarasai.org": 1,
+        "vocloner.com": 1,
+        "www.uberduck.ai": 1,
+        "speechify.com": 1,
+        "play.ht": 1,
+        "www.aixploria.com": 1,
+        "invideo.io": 1,
+        "www.vidnoz.com": 1,
+        "www.whytryai.com": 1
+      },
+      "extraction_methods": {
+        "newspaper3k": 9
+      },
+      "top_domains": {
+        "www.sarasai.org": 1,
+        "vocloner.com": 1,
+        "www.uberduck.ai": 1,
+        "speechify.com": 1,
+        "play.ht": 1
+      }
+    },
+    "content_quality": {
+      "average_quality": 42.22222222222222,
+      "high_quality_sites": 3,
+      "quality_distribution": {
+        "excellent": 0,
+        "good": 3,
+        "fair": 6,
+        "poor": 0
+      }
+    },
+    "trend_analysis": {
+      "trend_keywords": [
+        "you'll",
+        "storage",
+        "step",
+        "cloning",
+        "voice",
+        "free",
+        "this",
+        "senate",
+        "access",
+        "technical"
+      ],
+      "content_patterns": {
+        "average_title_length": 46.111111111111114,
+        "content_types": {
+          "articles": 0,
+          "guides": 0,
+          "tutorials": 0
+        }
+      }
+    }
+  },
+  "insights_summary": {
+    "key_insights": [
+      "Successfully analyzed 9 sources",
+      "Total content volume: 28,260 characters",
+      "Content depth is substantial, indicating comprehensive coverage",
+      "9 sites have excellent topic coverage",
+      "Content sourced from 9 unique domains",
+      "Good source diversity indicates comprehensive research"
+    ],
+    "recommendations": [
+      "Focus on sources with more detailed content"
+    ],
+    "trends": [
+      "Emerging keywords: you'll, storage, step, cloning, voice"
+    ],
+    "gaps": [],
+    "opportunities": [
+      "Consider longitudinal analysis for trend identification",
+      "Explore comparative analysis with related topics",
+      "Investigate emerging subtopics within the research area",
+      "Analyze content sentiment and public opinion trends"
+    ]
+  }
+}
